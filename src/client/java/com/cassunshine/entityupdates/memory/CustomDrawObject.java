@@ -77,9 +77,12 @@ public class CustomDrawObject implements AutoCloseable {
         GlStateManager._glBindVertexArray(vertexArrayId);
 
         int drawnVertices = bytes / description.stride();
-        int drawnIndexes = drawnVertices / drawMode.firstVertexCount;
+        int drawnIndexes = drawMode.getIndexCount(drawnVertices);
 
-        GlStateManager._drawElements(drawMode.glMode, drawnIndexes, indexBuffer.getIndexType().glType, 0L);
+        int skippedVertices = start / description.stride();
+        int skippedIndecies = drawMode.getIndexCount(skippedVertices);
+
+        GlStateManager._drawElements(drawMode.glMode, drawnIndexes, indexBuffer.getIndexType().glType, skippedVertices * 6L);
         GlStateManager._glBindVertexArray(0);
     }
 }

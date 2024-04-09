@@ -6,6 +6,7 @@ import net.minecraft.util.math.MathHelper;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -20,9 +21,40 @@ public class SectionAllocator {
     //All free sections, not ordered.
     private ArrayList<Section> freeSections = new ArrayList<>();
 
+    private ArrayList<Section> batchCache = new ArrayList<>();
+
     public SectionAllocator(int initialSize, int blockSize) {
         this.blockSize = blockSize;
         buffer = GlAllocationUtils.allocateByteBuffer(initialSize);
+
+        freeAll();
+    }
+
+    public ArrayList<Section> batchBy(Predicate<Section> predicate) {
+        batchCache.clear();
+
+        int batchStart = -1;
+        int batchLength = -1;
+
+        for (int i = 0; i < allSections.size(); i++) {
+            var section = allSections.get(i);
+            if (predicate.test(section)) {
+                if (batchStart == -1) {
+                    batchStart = section.offset;
+                    batchLength = 0;
+                }
+                batchLength += section.length;
+            } else if (batchLength != -1) {
+                batchCache.add(new Section(this, batchStart, batchLength));
+                batchStart = -1;
+                batchLength = -1;
+            }
+        }
+
+        if (batchLength != -1)
+            batchCache.add(new Section(this, batchStart, batchLength));
+
+        return batchCache;
     }
 
     public void freeAll() {
@@ -100,5 +132,7 @@ public class SectionAllocator {
             allSections.remove(current);
             freeSections.remove(current);
         }
+
+        freeSections.sort(Comparator.comparingInt(a -> a.offset));
     }
 }

@@ -35,7 +35,7 @@ public class SectionedBufferBuilder implements AutoCloseable {
 
         drawObject = new CustomDrawObject(vertexFormat, layer.getDrawMode());
 
-        allocator = new SectionAllocator(vertexDescription.stride() * 1024, vertexDescription.stride());
+        allocator = new SectionAllocator(vertexDescription.stride() * 1024 * 24 * 10, vertexDescription.stride());
     }
 
     public void uploadAndDrawSections() {
@@ -43,7 +43,8 @@ public class SectionedBufferBuilder implements AutoCloseable {
             uploadChanges();
             drawBatches();
 
-            allocator.freeAll();
+            //allocator.freeAll();
+            //allocator.buffer.clear();
         } catch (Exception e) {
             //Ignore
             System.out.println(e);
@@ -120,7 +121,11 @@ public class SectionedBufferBuilder implements AutoCloseable {
         RenderSystem.setupShaderLights(shader);
         shader.bind();
 
-        drawObject.drawAll();
+        for (Section section : allocator.batchBy((s) -> s.isClaimed)) {
+            drawObject.drawSection(section.offset, section.length);
+        }
+
+        //drawObject.drawAll();
 
         layer.endDrawing();
         shader.unbind();
@@ -135,7 +140,7 @@ public class SectionedBufferBuilder implements AutoCloseable {
         drawObject.close();
     }
 
-    public class SectionVertexConsumer implements VertexConsumer, VertexBufferWriter {
+    public class SectionVertexConsumer implements VertexConsumer, VertexBufferWriter, AutoCloseable {
 
         @Nullable
         private Section section;
@@ -144,7 +149,12 @@ public class SectionedBufferBuilder implements AutoCloseable {
 
         public void reset() {
             position = 0;
-            section = null;
+            if(section != null) {
+                allocator.free(section);
+                section = null;
+            }
+
+            //MemoryUtil.memSet(section.getPtr(0), 0, section.length);
         }
 
         /**
@@ -153,13 +163,13 @@ public class SectionedBufferBuilder implements AutoCloseable {
         public long pushPtr(int bytes) {
             //Create or reallocate section.
             if (section == null) {
-                section = allocator.allocate(bytes * 10);
+                section = allocator.allocate(bytes);
             } else if (position + bytes > section.length) {
                 //Get a new section.
                 var newSection = allocator.allocate(position + bytes);
 
                 //Copy old section into new section.
-                //MemoryUtil.memCopy(section.getPtr(0), newSection.getPtr(0), section.length);
+                MemoryUtil.memCopy(section.getPtr(0), newSection.getPtr(0), section.length);
 
                 allocator.free(section);
                 //Update properties.
@@ -175,6 +185,7 @@ public class SectionedBufferBuilder implements AutoCloseable {
         public void push(MemoryStack stack, long src, int count, VertexFormatDescription format) {
             int byteCount = vertexDescription.stride() * count;
             var dst = pushPtr(byteCount);
+            section.markDirty();
 
             if (format == vertexDescription) {
                 MemoryIntrinsics.copyMemory(src, dst, byteCount);
@@ -230,8 +241,10 @@ public class SectionedBufferBuilder implements AutoCloseable {
         public void unfixColor() {
 
         }
-    }
 
-    private record Batch(int batchStart, int batchLength) {
+        public void close() {
+            if (section != null)
+                allocator.free(section);
+        }
     }
 }

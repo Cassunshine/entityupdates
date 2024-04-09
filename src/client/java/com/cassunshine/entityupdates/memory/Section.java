@@ -10,9 +10,11 @@ public class Section {
 
     public boolean isClaimed = false;
 
+    public boolean isDirty = false;
+
     public Section(SectionAllocator allocator, int offset, int length) {
 
-        if(offset + length > allocator.buffer.capacity())
+        if (offset + length > allocator.buffer.capacity())
             System.out.println("WOW");
 
         this.allocator = allocator;
@@ -24,6 +26,10 @@ public class Section {
         if (position >= length)
             return getPtr(0);
 
-        return MemoryUtil.memAddress(allocator.buffer, offset);
+        return MemoryUtil.memAddress(allocator.buffer, offset + position);
+    }
+
+    public void markDirty() {
+        isDirty = true;
     }
 }
