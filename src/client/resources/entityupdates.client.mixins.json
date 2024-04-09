@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.cassunshine.entityupdates.mixin.client",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "RenderLayerMixin",
+    "WorldRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+	}
+}
