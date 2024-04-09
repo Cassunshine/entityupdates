@@ -30,6 +30,23 @@ public class SectionAllocator {
         freeAll();
     }
 
+    public void merge(){
+        for (int i = allSections.size() - 1; i >= 1; i--) {
+            Section current = allSections.get(i);
+            Section previousSection = allSections.get(i - 1);
+
+            if (current.isClaimed || previousSection.isClaimed)
+                continue;
+
+            previousSection.length += current.length;
+
+            allSections.remove(current);
+            freeSections.remove(current);
+        }
+
+        freeSections.sort(Comparator.comparingInt(a -> a.offset));
+    }
+
     public ArrayList<Section> batchBy(Predicate<Section> predicate) {
         batchCache.clear();
 
@@ -119,20 +136,5 @@ public class SectionAllocator {
     public void free(Section section) {
         section.isClaimed = false;
         freeSections.add(section);
-
-        for (int i = allSections.size() - 1; i >= 1; i--) {
-            Section current = allSections.get(i);
-            Section previousSection = allSections.get(i - 1);
-
-            if (current.isClaimed || previousSection.isClaimed)
-                continue;
-
-            previousSection.length += current.length;
-
-            allSections.remove(current);
-            freeSections.remove(current);
-        }
-
-        freeSections.sort(Comparator.comparingInt(a -> a.offset));
     }
 }

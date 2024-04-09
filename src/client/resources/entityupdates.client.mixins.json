@@ -3,6 +3,7 @@
   "package": "com.cassunshine.entityupdates.mixin.client",
   "compatibilityLevel": "JAVA_17",
   "client": [
+    "MatrixStackMixin",
     "RenderLayerMixin",
     "WorldRendererMixin"
   ],

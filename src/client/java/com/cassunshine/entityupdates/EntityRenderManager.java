@@ -1,17 +1,19 @@
 package com.cassunshine.entityupdates;
 
+import com.cassunshine.entityupdates.access.MatrixStackExtension;
 import com.cassunshine.entityupdates.memory.SectionedBufferBuilder;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.WorldRenderer;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
+import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import org.joml.*;
 import org.lwjgl.glfw.GLFW;
 
+import java.lang.Math;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,43 +26,66 @@ public class EntityRenderManager {
     private final CachedVertexConsumerProvider cvcp = new CachedVertexConsumerProvider();
 
     private EntityRenderDispatcher dispatcher;
-    private VertexConsumerProvider defaultProvider;
 
-    private Vec3d entityCenterPos = new Vec3d(0, 0, 0);
+    private Vec3d centralPos = new Vec3d(0, 0, 0);
 
     public void renderStart(WorldRenderer worldRenderer, EntityRenderDispatcher entityRenderDispatcher) {
         dispatcher = entityRenderDispatcher;
     }
 
-    public void renderBatches() {
-        cvcp.drawBuffers();
+    public void renderBatches(Camera camera, MatrixStack matrixStack) {
 
+        centralPos = new Vec3d(0, 0, 0);
+        Vec3d delta = camera.getPos().subtract(centralPos);
+
+        var stack = RenderSystem.getModelViewStack();
+
+        matrixStack.push();
+        stack.push();
+
+        DiffuseLighting.enableForLevel(stack.peek().getPositionMatrix());
+
+        stack.multiplyPositionMatrix(matrixStack.peek().getPositionMatrix());
+        stack.translate(-delta.x, -delta.y, -delta.z);
+
+        RenderSystem.applyModelViewMatrix();
+
+        cvcp.drawBuffers();
         cvcp.cleanup();
+
+        stack.pop();
+        matrixStack.pop();
     }
 
-    public void renderEntity(Entity entity, double cameraX, double cameraY, double cameraZ, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers) {
-        defaultProvider = vertexConsumers;
-
+    public void renderEntity(Entity entity, float tickDelta, MatrixStack matrices) {
         cvcp.setEntity(entity);
-
         cvcp.setupEntity();
+
+        //Write entity data as if it has no transforms (aside from being relative to the central pos)
+        matrices.push();
+        matrices.loadIdentity();
 
         //Render entity 'normally'
         dispatcher.render(
                 entity,
-                MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX()) - cameraX,
-                MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY()) - cameraY,
-                MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ()) - cameraZ,
+                MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX()),
+                MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY()),
+                MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ()),
                 MathHelper.lerp(tickDelta, entity.prevYaw, entity.getYaw()),
                 tickDelta, matrices, cvcp,
                 dispatcher.getLight(entity, tickDelta)
         );
+        matrices.pop();
+    }
+
+    public void clearEntity(Entity entity) {
+        cvcp.remove(entity);
     }
 
     private class CachedVertexConsumerProvider implements VertexConsumerProvider {
 
         private List<SectionedBufferBuilder> bufferList = new ArrayList<>();
-        private Map<String, SectionedBufferBuilder> buffers = new HashMap<>();
+        private Map<RenderLayer, SectionedBufferBuilder> buffers = new HashMap<>();
         private Map<Entity, EntityEntry> entityEntries = new HashMap<>();
 
         private Entity currentEntity;
@@ -115,18 +140,25 @@ public class EntityRenderManager {
             }
         }
 
+        public void remove(Entity entity) {
+            var entry = entityEntries.remove(entity);
+            if (entry != null)
+                entry.close();
+        }
+
         private class EntityEntry implements AutoCloseable {
             public final Entity entity;
             public double lastRenderTime;
 
-            public final Map<String, SectionedBufferBuilder.SectionVertexConsumer> layers = new HashMap<>();
+            public final Map<RenderLayer, SectionedBufferBuilder.SectionVertexConsumer> layers = new HashMap<>();
 
             private EntityEntry(Entity entity) {
                 this.entity = entity;
             }
 
             public VertexConsumer getConsumer(RenderLayer layer) {
-                var sectionConsumer = layers.computeIfAbsent(layer.toString(), (l) -> {
+
+                var sectionConsumer = layers.computeIfAbsent(layer, (l) -> {
                     var buffer = buffers.computeIfAbsent(l, (s) -> generateSectionedBuffer(layer));
                     return buffer.getSectionConsumer();
                 });

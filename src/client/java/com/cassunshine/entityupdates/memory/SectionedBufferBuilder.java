@@ -40,6 +40,7 @@ public class SectionedBufferBuilder implements AutoCloseable {
 
     public void uploadAndDrawSections() {
         try {
+            allocator.merge();
             uploadChanges();
             drawBatches();
 
@@ -56,14 +57,15 @@ public class SectionedBufferBuilder implements AutoCloseable {
         if (drawObject.ensureSize(allocator.buffer))
             return;
 
-        drawObject.uploadSection(0, allocator.buffer);
+        //drawObject.uploadSection(0, allocator.buffer);
 
-        /*for (Batch batch : batchBy((p) -> {
-            var result = p.dirty;
-            p.dirty = false;
+        for (Section section : allocator.batchBy((s) -> {
+            var result = s.isDirty;
+            s.isDirty = false;
             return result;
-        }))
-            drawObject.uploadSection(batch.batchStart, buffer.slice(batch.batchStart, batch.batchLength));*/
+        })) {
+            drawObject.uploadSection(section.offset, allocator.buffer.slice(section.offset, section.length));
+        }
     }
 
     private void drawBatches() {
@@ -149,11 +151,6 @@ public class SectionedBufferBuilder implements AutoCloseable {
 
         public void reset() {
             position = 0;
-            if(section != null) {
-                allocator.free(section);
-                section = null;
-            }
-
             //MemoryUtil.memSet(section.getPtr(0), 0, section.length);
         }
 
