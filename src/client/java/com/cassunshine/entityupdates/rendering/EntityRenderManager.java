@@ -50,6 +50,8 @@ public class EntityRenderManager {
         this.defaultProvider = defaultProvider;
 
         startTime = GlfwUtil.getTime();
+
+        instance = this;
     }
 
     /**
