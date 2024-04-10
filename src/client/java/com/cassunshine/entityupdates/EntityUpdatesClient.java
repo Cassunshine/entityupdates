@@ -5,6 +5,7 @@ import net.fabricmc.api.ClientModInitializer;
 public class EntityUpdatesClient implements ClientModInitializer {
 
     public static boolean isEnabled = true;
+    public static int maxRenders = 64;
 
     @Override
     public void onInitializeClient() {

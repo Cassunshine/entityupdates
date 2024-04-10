@@ -1,5 +1,6 @@
 package com.cassunshine.entityupdates.rendering;
 
+import com.cassunshine.entityupdates.EntityUpdatesClient;
 import com.cassunshine.entityupdates.access.RenderLayerAccess;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.render.*;
@@ -18,6 +19,11 @@ public class EntityRenderManager {
 
     private final Random random = new Random();
     private final CustomVertexConsumerProvider provider = new CustomVertexConsumerProvider();
+
+    private int rendersThisFrame = 0;
+
+    private int updateNumber = 0;
+    private boolean shouldIncUpdate = false;
 
     // STATE //
 
@@ -52,6 +58,14 @@ public class EntityRenderManager {
         startTime = GlfwUtil.getTime();
 
         instance = this;
+
+        //Leftover from last frame.
+        if (shouldIncUpdate) {
+            updateNumber++;
+        }
+
+        rendersThisFrame = 0;
+        shouldIncUpdate = true;
     }
 
     /**
@@ -118,6 +132,8 @@ public class EntityRenderManager {
          */
         public double lastRenderTime;
 
+        public int entityUpdate;
+
         private EntityRenderStatus(Entity target) {
             this.target = target;
 
@@ -125,12 +141,26 @@ public class EntityRenderManager {
         }
 
         public boolean shouldRender() {
-            double renderRate = Math.floor(target.distanceTo(camera.getFocusedEntity()) / 64);
 
-            if (startTime - lastRenderTime > renderRate || renderRate == 0)
-                return true;
+            //If an entity has already rendered this update, it shouldn't render, no matter what.
+            if (entityUpdate == updateNumber)
+                return false;
 
-            return false;
+            //If we've rendered too many entities, don't increment the update counter, since we didn't all get a chance to update.
+            if (rendersThisFrame >= EntityUpdatesClient.maxRenders) {
+                shouldIncUpdate = false;
+                return false;
+            }
+
+            //Entity proceeds to update regardless of if they actually render or not. They had their chance this update!
+            entityUpdate = updateNumber;
+
+            double renderRate = (Math.floor(target.distanceTo(camera.getFocusedEntity()) / 32)) / 2;
+
+            if (!(startTime - lastRenderTime > renderRate) && renderRate != 0)
+                return false;
+
+            return true;
         }
 
         public void render(float tickDelta, MatrixStack stack) {
@@ -146,6 +176,8 @@ public class EntityRenderManager {
                     tickDelta, stack, provider,
                     dispatcher.getLight(target, tickDelta)
             );
+
+            rendersThisFrame++;
         }
     }
 
