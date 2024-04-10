@@ -1,6 +1,6 @@
 package com.cassunshine.entityupdates.mixin.client;
 
-import com.cassunshine.entityupdates.EntityRenderManager;
+import com.cassunshine.entityupdates.rendering.EntityRenderManager;
 import com.cassunshine.entityupdates.EntityUpdatesClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
@@ -26,14 +26,17 @@ public class WorldRendererMixin {
     private @Nullable ClientWorld world;
     @Shadow
     private Frustum frustum;
+    @Shadow
+    @Final
+    private BufferBuilderStorage bufferBuilders;
     public EntityRenderManager entityupdates_entityRenderManager = new EntityRenderManager();
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/world/ClientWorld;getEntities()Ljava/lang/Iterable;"), method = "render")
     private void entityudpates_renderStart(MatrixStack matrices, float tickDelta, long limitTime, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightmapTextureManager lightmapTextureManager, Matrix4f projectionMatrix, CallbackInfo ci) {
-        if(!EntityUpdatesClient.isEnabled)
+        if (!EntityUpdatesClient.isEnabled)
             return;
 
-        entityupdates_entityRenderManager.renderStart((WorldRenderer) (Object) this, entityRenderDispatcher);
+        entityupdates_entityRenderManager.renderStart((WorldRenderer) (Object) this, camera, entityRenderDispatcher, bufferBuilders.getEntityVertexConsumers() /* Default to using immediate-mode rendering*/);
 
         var camPos = camera.getPos();
         var tickManager = world.getTickManager();
@@ -46,9 +49,8 @@ public class WorldRendererMixin {
                 entity.lastRenderZ = entity.getZ();
             }
 
-
             if (!entityRenderDispatcher.shouldRender(entity, frustum, camPos.x, camPos.y, camPos.z) || (entity == camera.getFocusedEntity() && !camera.isThirdPerson())) {
-                entityupdates_entityRenderManager.clearEntity(entity);
+
             } else {
                 entityupdates_entityRenderManager.renderEntity(entity, tickManager.shouldSkipTick(entity) ? defaultedDelta : tickDelta, matrices);
             }
@@ -59,7 +61,7 @@ public class WorldRendererMixin {
 
     @Inject(at = @At("HEAD"), cancellable = true, method = "renderEntity")
     private void entityupdates_renderEntity(Entity entity, double cameraX, double cameraY, double cameraZ, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, CallbackInfo ci) {
-        if(!EntityUpdatesClient.isEnabled)
+        if (!EntityUpdatesClient.isEnabled)
             return;
 
         //Never call original entity rendering.

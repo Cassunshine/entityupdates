@@ -1,6 +1,8 @@
 package com.cassunshine.entityupdates.access;
 
+import com.cassunshine.entityupdates.rendering.RenderLayerIdentifier;
+
 public interface RenderLayerAccess {
 
-    boolean isTranslucent();
+    public RenderLayerIdentifier getRenderLayerIdentifier();
 }

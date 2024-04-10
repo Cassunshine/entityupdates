@@ -32,6 +32,7 @@ repositories {
 
 loom {
     splitEnvironmentSourceSets()
+	accessWidenerPath = file("src/client/resources/entityupdates.accesswidener")
 
 	mods {
 		"entityupdates" {
