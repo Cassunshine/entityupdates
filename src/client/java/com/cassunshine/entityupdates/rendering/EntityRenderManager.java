@@ -111,7 +111,7 @@ public class EntityRenderManager {
             var identifier = access.getRenderLayerIdentifier();
 
             //If there's any issue getting the identifier, just fallback to default instead.
-            if (identifier == null)
+            if (identifier == null || identifier.translucent())
                 return defaultProvider.getBuffer(layer);
 
             var dataCache = renderLayerDataCache.computeIfAbsent(identifier, this::generateData);

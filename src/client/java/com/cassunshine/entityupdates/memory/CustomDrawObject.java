@@ -53,7 +53,7 @@ public class CustomDrawObject implements AutoCloseable {
         vertexCount = storedBytes / description.stride();
 
         indexBuffer = RenderSystem.getSequentialBuffer(drawMode);
-        indexBuffer.bindAndGrow(vertexCount / drawMode.firstVertexCount);
+        indexBuffer.bindAndGrow(drawMode.getIndexCount(vertexCount));
 
         GlStateManager._glBindVertexArray(0);
         return true;

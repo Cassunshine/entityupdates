@@ -40,7 +40,7 @@ public class ByteBufferAllocator {
 
     private void grow() {
         var currentCapacity = memoryBuffer.capacity();
-        memoryBuffer = GlAllocationUtils.resizeByteBuffer(memoryBuffer, memoryBuffer.capacity() * 2);
+        memoryBuffer = GlAllocationUtils.resizeByteBuffer(memoryBuffer, currentCapacity * 2);
 
         var newSection = new Section(this, currentCapacity, currentCapacity);
 
