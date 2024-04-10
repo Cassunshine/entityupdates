@@ -61,20 +61,11 @@ public class RenderLayerData {
         return result;
     }
 
-    public void cleanRemoved() {
-        removeCache.addAll(entityVertexConsumers.keySet());
+    public void removeEntity(Entity entity) {
+        var removed = entityVertexConsumers.remove(entity);
 
-        for (Entity entity : removeCache) {
-            var value = entityVertexConsumers.get(entity);
-
-            if (entity.isRemoved()) {
-                value.clear();
-                entityVertexConsumers.remove(entity);
-            }
-        }
-
-        removeCache.clear();
-        allocator.mergeFree();
+        if (removed != null)
+            removed.clear();
     }
 
     public void render() {
@@ -151,10 +142,8 @@ public class RenderLayerData {
         RenderSystem.setupShaderLights(shader);
         shader.bind();
 
-        //for (var section : allocator.batchBy((s) -> s.claimed))
-        //drawObject.drawSection(section.offset, section.length);
-
-        drawObject.drawAll();
+        for (var section : allocator.batchBy((s) -> s.claimed))
+            drawObject.drawSection(section.offset, section.length);
 
         lastRenderLayer.endDrawing();
         shader.unbind();
@@ -223,32 +212,32 @@ public class RenderLayerData {
 
         @Override
         public VertexConsumer vertex(double x, double y, double z) {
-            return null;
+            return this;
         }
 
         @Override
         public VertexConsumer color(int red, int green, int blue, int alpha) {
-            return null;
+            return this;
         }
 
         @Override
         public VertexConsumer texture(float u, float v) {
-            return null;
+            return this;
         }
 
         @Override
         public VertexConsumer overlay(int u, int v) {
-            return null;
+            return this;
         }
 
         @Override
         public VertexConsumer light(int u, int v) {
-            return null;
+            return this;
         }
 
         @Override
         public VertexConsumer normal(float x, float y, float z) {
-            return null;
+            return this;
         }
 
         @Override

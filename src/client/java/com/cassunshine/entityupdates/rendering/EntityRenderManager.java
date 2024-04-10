@@ -4,15 +4,19 @@ import com.cassunshine.entityupdates.access.RenderLayerAccess;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.util.GlfwUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.HashMap;
+import java.util.*;
 
 public class EntityRenderManager {
 
+    public static EntityRenderManager instance;
+
+    private final Random random = new Random();
     private final CustomVertexConsumerProvider provider = new CustomVertexConsumerProvider();
 
     // STATE //
@@ -27,12 +31,16 @@ public class EntityRenderManager {
 
     // REFERENCES //
 
+    private final Map<Entity, EntityRenderStatus> statuses = new HashMap<>();
+
     private Camera camera;
     private WorldRenderer worldRenderer;
     private EntityRenderDispatcher dispatcher;
     private VertexConsumerProvider defaultProvider;
 
     public Entity currentEntity;
+
+    private double startTime;
 
 
     public void renderStart(WorldRenderer worldRenderer, Camera camera, EntityRenderDispatcher entityRenderDispatcher, VertexConsumerProvider defaultProvider) {
@@ -41,8 +49,7 @@ public class EntityRenderManager {
         this.dispatcher = entityRenderDispatcher;
         this.defaultProvider = defaultProvider;
 
-
-        provider.cleanRemoved();
+        startTime = GlfwUtil.getTime();
     }
 
     /**
@@ -55,17 +62,17 @@ public class EntityRenderManager {
         matrices.loadIdentity();
         currentEntity = entity;
 
-        //Render entity 'normally'
-        dispatcher.render(
-                entity,
-                MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX()),
-                MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY()),
-                MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ()),
-                MathHelper.lerp(tickDelta, entity.prevYaw, entity.getYaw()),
-                tickDelta, matrices, provider,
-                dispatcher.getLight(entity, tickDelta)
-        );
+        var status = statuses.computeIfAbsent(currentEntity, EntityRenderStatus::new);
+
+        if (status.shouldRender())
+            status.render(tickDelta, matrices);
+
         matrices.pop();
+    }
+
+    public void removeEntity(Entity entity) {
+        statuses.remove(entity);
+        provider.removeEntity(entity);
     }
 
     /**
@@ -92,10 +99,52 @@ public class EntityRenderManager {
         for (RenderLayerData value : provider.renderLayerDataCache.values())
             value.render();
 
+        if (defaultProvider instanceof VertexConsumerProvider.Immediate immediate)
+            immediate.drawCurrentLayer();
+
         stack.pop();
         matrixStack.pop();
 
         RenderSystem.applyModelViewMatrix();
+    }
+
+    private class EntityRenderStatus {
+        public final Entity target;
+
+        /**
+         * The last time this entity was rendered.
+         */
+        public double lastRenderTime;
+
+        private EntityRenderStatus(Entity target) {
+            this.target = target;
+
+            lastRenderTime = GlfwUtil.getTime() + random.nextDouble();
+        }
+
+        public boolean shouldRender() {
+            double renderRate = Math.floor(target.distanceTo(camera.getFocusedEntity()) / 64);
+
+            if (startTime - lastRenderTime > renderRate || renderRate == 0)
+                return true;
+
+            return false;
+        }
+
+        public void render(float tickDelta, MatrixStack stack) {
+            lastRenderTime = startTime - random.nextDouble();
+
+            //Render entity 'normally'
+            dispatcher.render(
+                    target,
+                    MathHelper.lerp(tickDelta, target.lastRenderX, target.getX()),
+                    MathHelper.lerp(tickDelta, target.lastRenderY, target.getY()),
+                    MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ()),
+                    MathHelper.lerp(tickDelta, target.prevYaw, target.getYaw()),
+                    tickDelta, stack, provider,
+                    dispatcher.getLight(target, tickDelta)
+            );
+        }
     }
 
     private class CustomVertexConsumerProvider implements VertexConsumerProvider {
@@ -124,9 +173,9 @@ public class EntityRenderManager {
             return new RenderLayerData(identifier);
         }
 
-        public void cleanRemoved() {
-            for (RenderLayerData value : renderLayerDataCache.values())
-                value.cleanRemoved();
+        public void removeEntity(Entity entity) {
+            for (RenderLayerData data : renderLayerDataCache.values())
+                data.removeEntity(entity);
         }
     }
 }
