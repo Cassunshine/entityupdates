@@ -56,9 +56,6 @@ public class RenderLayerData {
 
     public EntityVertexConsumer getConsumerForEntity(Entity e) {
         var result = entityVertexConsumers.computeIfAbsent(e, (entity) -> new EntityVertexConsumer());
-
-        allocator.mergeFree();
-        result.reset();
         return result;
     }
 
@@ -161,6 +158,13 @@ public class RenderLayerData {
 
     public void close() {
         allocator.close();
+    }
+
+    public void resetEntity(Entity entity) {
+        var consumer = entityVertexConsumers.get(entity);
+        if (consumer == null)
+            return;
+        consumer.reset();
     }
 
 

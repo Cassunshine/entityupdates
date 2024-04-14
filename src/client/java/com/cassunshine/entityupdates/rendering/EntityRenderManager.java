@@ -55,7 +55,7 @@ public class EntityRenderManager {
 
     public void renderStart(WorldRenderer worldRenderer, Camera camera, EntityRenderDispatcher entityRenderDispatcher, VertexConsumerProvider defaultProvider) {
 
-        if(MinecraftClient.getInstance().world != lastWorld){
+        if (MinecraftClient.getInstance().world != lastWorld) {
             lastWorld = MinecraftClient.getInstance().world;
             provider.clearAll();
         }
@@ -122,7 +122,8 @@ public class EntityRenderManager {
 
         RenderSystem.applyModelViewMatrix();
 
-        for (RenderLayerData value : provider.renderLayerDataCache.values())
+        provider.sortedRenderLayers.sort((a, b) -> Boolean.compare(a.translucent, b.translucent));
+        for (RenderLayerData value : provider.sortedRenderLayers)
             value.render();
 
         if (defaultProvider instanceof VertexConsumerProvider.Immediate immediate)
@@ -176,6 +177,8 @@ public class EntityRenderManager {
         public void render(float tickDelta, MatrixStack stack) {
             lastRenderTime = startTime - random.nextDouble();
 
+            provider.resetEntity(target);
+
             //Render entity 'normally'
             dispatcher.render(
                     target,
@@ -194,6 +197,7 @@ public class EntityRenderManager {
     private class CustomVertexConsumerProvider implements VertexConsumerProvider {
 
         private HashMap<RenderLayerIdentifier, RenderLayerData> renderLayerDataCache = new HashMap<>();
+        private List<RenderLayerData> sortedRenderLayers = new ArrayList<>();
 
         @Override
         public VertexConsumer getBuffer(RenderLayer layer) {
@@ -210,7 +214,14 @@ public class EntityRenderManager {
         }
 
         private RenderLayerData generateData(RenderLayerIdentifier identifier) {
-            return new RenderLayerData(identifier);
+            var newLayer = new RenderLayerData(identifier);
+            sortedRenderLayers.add(newLayer);
+            return newLayer;
+        }
+
+        public void resetEntity(Entity e){
+            for (RenderLayerData data : renderLayerDataCache.values())
+                data.resetEntity(e);
         }
 
         public void removeEntity(Entity entity) {
