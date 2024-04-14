@@ -50,7 +50,7 @@ public class WorldRendererMixin {
             }
 
             if (!entityRenderDispatcher.shouldRender(entity, frustum, camPos.x, camPos.y, camPos.z) || (entity == camera.getFocusedEntity() && !camera.isThirdPerson())) {
-
+                entityupdates_entityRenderManager.removeEntity(entity);
             } else {
                 entityupdates_entityRenderManager.renderEntity(entity, tickManager.shouldSkipTick(entity) ? defaultedDelta : tickDelta, matrices);
             }

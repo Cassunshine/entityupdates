@@ -3,6 +3,7 @@ package com.cassunshine.entityupdates.rendering;
 import com.cassunshine.entityupdates.EntityUpdatesClient;
 import com.cassunshine.entityupdates.access.RenderLayerAccess;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.GlfwUtil;
@@ -10,6 +11,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 
 import java.util.*;
 
@@ -48,8 +50,16 @@ public class EntityRenderManager {
 
     private double startTime;
 
+    private World lastWorld;
+
 
     public void renderStart(WorldRenderer worldRenderer, Camera camera, EntityRenderDispatcher entityRenderDispatcher, VertexConsumerProvider defaultProvider) {
+
+        if(MinecraftClient.getInstance().world != lastWorld){
+            lastWorld = MinecraftClient.getInstance().world;
+            provider.clearAll();
+        }
+
         this.camera = camera;
         this.worldRenderer = worldRenderer;
         this.dispatcher = entityRenderDispatcher;
@@ -137,7 +147,7 @@ public class EntityRenderManager {
         private EntityRenderStatus(Entity target) {
             this.target = target;
 
-            lastRenderTime = GlfwUtil.getTime() + random.nextDouble();
+            lastRenderTime = 0;
         }
 
         public boolean shouldRender() {
@@ -155,7 +165,7 @@ public class EntityRenderManager {
             //Entity proceeds to update regardless of if they actually render or not. They had their chance this update!
             entityUpdate = updateNumber;
 
-            double renderRate = (Math.floor(target.distanceTo(camera.getFocusedEntity()) / 32)) / 2;
+            double renderRate = (Math.floor(target.distanceTo(camera.getFocusedEntity()) / 64)) / 4;
 
             if (!(startTime - lastRenderTime > renderRate) && renderRate != 0)
                 return false;
@@ -188,14 +198,10 @@ public class EntityRenderManager {
         @Override
         public VertexConsumer getBuffer(RenderLayer layer) {
             //Fallback if this render layer isn't supported. This should make mods with custom render layers happier.
-            if (!(layer instanceof RenderLayerAccess access) || layer.getDrawMode() != VertexFormat.DrawMode.QUADS)
+            if (!(layer instanceof RenderLayerAccess access))
                 return defaultProvider.getBuffer(layer);
 
             var identifier = access.getRenderLayerIdentifier();
-
-            //If there's any issue getting the identifier, just fallback to default instead.
-            if (identifier == null || identifier.translucent())
-                return defaultProvider.getBuffer(layer);
 
             var dataCache = renderLayerDataCache.computeIfAbsent(identifier, this::generateData);
             dataCache.lastRenderLayer = layer;
@@ -210,6 +216,11 @@ public class EntityRenderManager {
         public void removeEntity(Entity entity) {
             for (RenderLayerData data : renderLayerDataCache.values())
                 data.removeEntity(entity);
+        }
+
+        public void clearAll() {
+            for (RenderLayerData data : renderLayerDataCache.values())
+                data.clearAll();
         }
     }
 }

@@ -14,6 +14,7 @@ public class ClientWorldMixin {
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;onRemoved()V"), method = "removeEntity", locals = LocalCapture.CAPTURE_FAILSOFT)
     public void entityupdates_removeEntity(int entityId, Entity.RemovalReason removalReason, CallbackInfo ci, Entity entity) {
-        EntityRenderManager.instance.removeEntity(entity);
+        if (EntityRenderManager.instance != null)
+            EntityRenderManager.instance.removeEntity(entity);
     }
 }

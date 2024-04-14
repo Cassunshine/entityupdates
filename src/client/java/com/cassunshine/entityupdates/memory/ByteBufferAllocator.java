@@ -64,7 +64,7 @@ public class ByteBufferAllocator {
         freeSlices.add(newSection);
 
         section.length = bytes;
-        section.blocks = newSize;
+        section.updateBlocks();
 
         //verify();
     }
@@ -83,6 +83,7 @@ public class ByteBufferAllocator {
                 continue;
 
             thisSlice.length += nextSlice.length;
+            thisSlice.updateBlocks();
 
             allSlices.remove(nextSlice);
             freeSlices.remove(i + 1);
@@ -163,7 +164,7 @@ public class ByteBufferAllocator {
     }
 
     private void verify() {
-        int expectedEnd = 0;
+        /*int expectedEnd = 0;
 
         for (int i = 0; i < allSlices.size(); i++) {
             Section slice = allSlices.get(i);
@@ -175,8 +176,8 @@ public class ByteBufferAllocator {
                 throw new RuntimeException("Verification failed");
         }
 
-        if(expectedEnd != memoryBuffer.capacity())
-            throw new RuntimeException("Verification failed");
+        if (expectedEnd != memoryBuffer.capacity())
+            throw new RuntimeException("Verification failed");*/
     }
 
     public class Section {
@@ -190,12 +191,17 @@ public class ByteBufferAllocator {
         public boolean claimed;
         public boolean dirty;
 
+
         public Section(ByteBufferAllocator allocator, int offset, int length) {
             this.allocator = allocator;
             this.offset = offset;
             this.length = length;
 
-            this.blocks = length / blockSize;
+            this.updateBlocks();
+        }
+
+        public void updateBlocks() {
+            blocks = length / blockSize;
         }
 
         public long getPtr(int position) throws Exception {

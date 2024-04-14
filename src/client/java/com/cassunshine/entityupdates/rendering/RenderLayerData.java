@@ -57,6 +57,7 @@ public class RenderLayerData {
     public EntityVertexConsumer getConsumerForEntity(Entity e) {
         var result = entityVertexConsumers.computeIfAbsent(e, (entity) -> new EntityVertexConsumer());
 
+        allocator.mergeFree();
         result.reset();
         return result;
     }
@@ -68,7 +69,16 @@ public class RenderLayerData {
             removed.clear();
     }
 
+    public void clearAll() {
+        for (Map.Entry<Entity, EntityVertexConsumer> entry : entityVertexConsumers.entrySet()) entry.getValue().clear();
+
+        entityVertexConsumers.clear();
+        allocator.mergeFree();
+    }
+
     public void render() {
+        allocator.mergeFree();
+
         uploadChanges();
         drawBatches();
     }
@@ -153,6 +163,7 @@ public class RenderLayerData {
         allocator.close();
     }
 
+
     public class EntityVertexConsumer implements VertexConsumer, VertexBufferWriter {
 
         private ByteBufferAllocator.Section section;
@@ -160,10 +171,10 @@ public class RenderLayerData {
 
         public void reset() {
             position = 0;
-            /*if (section != null) {
+            if (section != null) {
                 allocator.freeSlice(section);
                 section = null;
-            }*/
+            }
         }
 
         public void clear() {
