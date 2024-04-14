@@ -122,7 +122,7 @@ public class EntityRenderManager {
 
         RenderSystem.applyModelViewMatrix();
 
-        provider.sortedRenderLayers.sort((a, b) -> Boolean.compare(a.translucent, b.translucent));
+        provider.sortedRenderLayers.sort((a, b) -> Boolean.compare(a.renderLayerIdentifier.transparency() != RenderPhase.NO_TRANSPARENCY, b.renderLayerIdentifier.transparency() != RenderPhase.NO_TRANSPARENCY));
         for (RenderLayerData value : provider.sortedRenderLayers)
             value.render();
 
@@ -219,7 +219,7 @@ public class EntityRenderManager {
             return newLayer;
         }
 
-        public void resetEntity(Entity e){
+        public void resetEntity(Entity e) {
             for (RenderLayerData data : renderLayerDataCache.values())
                 data.resetEntity(e);
         }

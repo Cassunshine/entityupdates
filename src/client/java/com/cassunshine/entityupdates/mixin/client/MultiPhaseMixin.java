@@ -27,13 +27,22 @@ public class MultiPhaseMixin extends RenderLayer implements RenderLayerAccess {
 
     public RenderLayerIdentifier getRenderLayerIdentifier() {
 
+
         if (entityupdates_identifier == null) {
             entityupdates_identifier = new RenderLayerIdentifier(
-                    ((TextureBaseAccess) phases.texture).getIdExposed(),
-                    phases.transparency != RenderPhase.NO_TRANSPARENCY,
-                    ((ShaderProgramAccess) phases.program).getSupplierExposed(),
                     getVertexFormat(),
-                    getDrawMode()
+                    getDrawMode(),
+                    ((TextureBaseAccess) phases.texture).getIdExposed(),
+                    phases.texturing,
+                    ((ShaderProgramAccess) phases.program).getSupplierExposed(),
+                    phases.transparency,
+                    phases.depthTest,
+                    phases.cull,
+                    phases.writeMaskState,
+                    phases.lightmap,
+                    phases.target,
+                    phases.layering,
+                    phases.lineWidth
             );
         }
 

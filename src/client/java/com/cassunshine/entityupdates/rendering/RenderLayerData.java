@@ -24,10 +24,10 @@ import java.util.Map;
  * Stores all the data within a given
  */
 public class RenderLayerData {
+
+    public final RenderLayerIdentifier renderLayerIdentifier;
     public final VertexFormat vertexFormat;
     public final VertexFormatDescription vertexDescription;
-    public final boolean translucent;
-
 
     public final CustomDrawObject drawObject;
     public final ByteBufferAllocator allocator;
@@ -42,9 +42,9 @@ public class RenderLayerData {
 
 
     public RenderLayerData(RenderLayerIdentifier identifier) {
+        this.renderLayerIdentifier = identifier;
         this.vertexFormat = identifier.format();
         this.vertexDescription = VertexFormatRegistry.instance().get(vertexFormat);
-        this.translucent = identifier.translucent();
 
         this.drawObject = new CustomDrawObject(vertexFormat, identifier.drawMode());
         this.allocator = new ByteBufferAllocator(vertexDescription.stride(), 64);
